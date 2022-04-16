@@ -1,7 +1,11 @@
 import torch
 import torch.nn as nn
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-from UCF101_9_Load_Data import read_data
+# from dataset import train_loader
+from torch.utils.data import DataLoader
+from torch.autograd import Variable
+
+from dataset import VideoDataset
 
 # %% HyperParameters
 NICKNAME = 'Trial_9class'
@@ -13,7 +17,7 @@ PRETRAINED = False
 # PRETRAINED = models.efficientnet_b4(pretrained=True)
 
 # %%
-train_ds, test_ds = read_data()
+# train_ds, test_ds = read_data()
 
 # %% Create the model
 class CNN(nn.Module):
@@ -77,8 +81,11 @@ def save_model(model):
 model, optimizer, criterion, scheduler = model_definition(PRETRAINED)
 print(model)
 # Fit data to model
+
+train_loader = DataLoader(VideoDataset(dataset = 'ucf101', split='train',clip_len=16), batch_size=20, shuffle=True, num_workers=4)
+# val_dataloader  = DataLoader(VideoDataset(dataset=dataset, split='val',  clip_len=16), batch_size=20, num_workers=4)
 for epoch in range(n_epoch):
-    for xdata, xtarget in train_ds:
+    for xdata, xtarget in train_loader:
         xdata, xtarget = xdata.to(device), xtarget.to(device)
         optimizer.zero_grad()
         output = model(xdata)

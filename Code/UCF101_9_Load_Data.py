@@ -62,8 +62,19 @@ def read_data():
     print(f"Total number of test samples: {len(test_dataset)}")
     print(f"Total number of (train) batches: {len(train_loader)}")
     print(f"Total number of (test) batches: {len(test_loader)}")
-    print()
+
+    for i, sample in enumerate(train_loader):
+        inputs = sample[0]
+        labels = sample[1]
+        print(inputs.size())
+        print(labels)
+
+        if i == 1:
+            break
+
     return train_loader, test_loader
 
 
 train_ds, test_ds = read_data()
+
+
