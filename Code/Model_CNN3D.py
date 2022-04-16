@@ -38,11 +38,11 @@ class CNN(nn.Module):
         self.act = torch.relu
 
 
-    def forward(self, x):
+    def forward(self, x):  # x shape = (20, 3, 16, 112, 112)
         x = self.drop1(self.pool1(self.convnorm1(self.act(self.conv1(x)))))
         x = self.drop2(self.pool2(self.convnorm2(self.act(self.conv2(x)))))
         # x = self.pool3(self.dropout3(self.act(self.conv4(self.act(self.conv3(x))))))
-        return self.linear2(self.linear1(self.global_avg_pool(x).view(-1, -1, 64)))
+        return self.linear2(self.linear1(self.global_avg_pool(x).view(-1, 128)))
 
 
 # %% Utility Functions
