@@ -58,8 +58,8 @@ class VideoDataset(Dataset):
         self.label_array = np.array([self.label2index[label] for label in labels], dtype=int)
 
         if dataset == "ucf101":
-            if not os.path.exists('ucf_labels.txt'):
-                with open('ucf_labels.txt', 'w') as f:
+            if not os.path.exists('../Data/ucf_labels.txt'):
+                with open('../Data/ucf_labels.txt', 'w') as f:
                     for id, label in enumerate(sorted(self.label2index)):
                         f.writelines(str(id+1) + ' ' + label + '\n')
 
@@ -109,10 +109,10 @@ class VideoDataset(Dataset):
 
     def preprocess(self):
         if not os.path.exists(self.output_dir):
-            os.mkdir(self.output_dir)
-            os.mkdir(os.path.join(self.output_dir, 'train'))
-            os.mkdir(os.path.join(self.output_dir, 'val'))
-            os.mkdir(os.path.join(self.output_dir, 'test'))
+            os.makedirs(self.output_dir)
+            os.makedirs(os.path.join(self.output_dir, 'train'))
+            os.makedirs(os.path.join(self.output_dir, 'val'))
+            os.makedirs(os.path.join(self.output_dir, 'test'))
 
         # Split train/val/test sets
         for file in os.listdir(self.root_dir):
@@ -127,11 +127,11 @@ class VideoDataset(Dataset):
             test_dir = os.path.join(self.output_dir, 'test', file)
 
             if not os.path.exists(train_dir):
-                os.mkdir(train_dir)
+                os.makedirs(train_dir)
             if not os.path.exists(val_dir):
-                os.mkdir(val_dir)
+                os.makedirs(val_dir)
             if not os.path.exists(test_dir):
-                os.mkdir(test_dir)
+                os.makedirs(test_dir)
 
             for video in train:
                 self.process_video(video, file, train_dir)
@@ -148,7 +148,7 @@ class VideoDataset(Dataset):
         # Initialize a VideoCapture object to read video data into a numpy array
         video_filename = video.split('.')[0]
         if not os.path.exists(os.path.join(save_dir, video_filename)):
-            os.mkdir(os.path.join(save_dir, video_filename))
+            os.makedirs(os.path.join(save_dir, video_filename))
 
         capture = cv2.VideoCapture(os.path.join(self.root_dir, action_name, video))
 
