@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 import torch.nn as nn
 from torch.optim.lr_scheduler import ReduceLROnPlateau
@@ -13,6 +14,7 @@ from sklearn.metrics import accuracy_score, f1_score, hamming_loss, cohen_kappa_
 # %% HyperParameters
 NICKNAME = 'Trial_9class'
 OUTPUTS_a = 9  # Subject to change, now we manually picked 9 classes to classify
+BATCH_SIZE = 20
 LR = 0.001
 n_epoch = 10
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
@@ -136,24 +138,24 @@ def metrics_func(metrics, aggregates, y_true, y_pred):
             xmet = cohen_kappa_metric(y_true, y_pred)
         elif xm == 'acc':
             # Accuracy
-            xmet =accuracy_metric(y_true, y_pred)
+            xmet = accuracy_metric(y_true, y_pred)
         elif xm == 'mat':
             # Matthews
-            xmet =matthews_metric(y_true, y_pred)
+            xmet = matthews_metric(y_true, y_pred)
         elif xm == 'hlm':
-            xmet =hamming_metric(y_true, y_pred)
+            xmet = hamming_metric(y_true, y_pred)
         else:
             xmet = 0
 
         res_dict[xm] = xmet
 
-        xsum = xsum + xmet
+        xdif = xsum - xmet
         xcont = xcont +1
 
-    if 'sum' in aggregates:
-        res_dict['sum'] = xsum
-    if 'avg' in aggregates and xcont > 0:
-        res_dict['avg'] = xsum/xcont
+    if 'dif' in aggregates:
+        res_dict['dif'] = xdif
+    # if 'avg' in aggregates and xcont > 0:
+    #     res_dict['avg'] = xsum/xcont
     # Ask for arguments for each metric
 
     return res_dict
@@ -260,10 +262,15 @@ def train(n_epoch, list_of_metrics, list_of_agg, PRETRAINED=False):
     model, optimizer, criterion, scheduler = model_definition(PRETRAINED)
     print(model)
     # Fit data to model
-    train_loader = DataLoader(VideoDataset(dataset='ucf101', split='train',clip_len=16), batch_size=20, shuffle=True, num_workers=1)
+    train_loader = DataLoader(VideoDataset(dataset='ucf101', split='train',clip_len=16), batch_size=BATCH_SIZE, shuffle=True, num_workers=1)
+    test_loader = DataLoader(VideoDataset(dataset='ucf101', split='test',clip_len=16), batch_size=BATCH_SIZE, shuffle=True, num_workers=1)
+
 
     for epoch in range(n_epoch):
         train_loss, steps_train = 0, 0
+        model.train()
+        pred_logits_train, real_logits_train = [], []
+
         with tqdm(total=len(train_loader), desc="Epoch {}".format(epoch)) as pbar:
             for xdata, xtarget in train_loader:
                 xdata = Variable(xdata, requires_grad=True).to(device)
@@ -280,11 +287,15 @@ def train(n_epoch, list_of_metrics, list_of_agg, PRETRAINED=False):
                 # print(loss)
                 pbar.update(1)
                 pbar.set_postfix_str("Train Loss: {:.5f}".format(train_loss / steps_train))
-        # pred_labels_per = output.detach().to(torch.device('cpu')).numpy()
-        probs = nn.Softmax(dim=1)(output)
-        pred_labels = torch.max(probs, 1)[1].detach().cpu().numpy()
-        real_labels = xtarget.cpu().numpy()
-        train_metrics = metrics_func(list_of_metrics, list_of_agg, real_labels, pred_labels)
+
+                probs = nn.Softmax(dim=1)(output)
+                pred_labels_train = list(torch.max(probs, 1)[1].detach().cpu().numpy())
+                real_labels_train = list(xtarget.cpu().numpy())
+
+                pred_logits_train += pred_labels_train
+                real_logits_train += real_labels_train
+
+        train_metrics = metrics_func(list_of_metrics, list_of_agg, real_logits_train, pred_logits_train)
         xstrres = "Epoch {}: ".format(epoch)
         for met, dat in train_metrics.items():
             xstrres = xstrres +' Train '+met+ ' {:.5f}'.format(dat)
@@ -292,9 +303,41 @@ def train(n_epoch, list_of_metrics, list_of_agg, PRETRAINED=False):
         xstrres = xstrres + " - "
         print(xstrres)
 
+        test_loss, steps_test = 0, 0
+        model.eval()
+        pred_logits_test, real_logits_test = [], []
+
+        with torch.no_grad():
+            with tqdm(total=len(test_loader), desc="Epoch {}".format(epoch)) as pbar:
+                for xdata, xtarget in test_loader:
+
+                    xdata, xtarget = xdata.to(device), xtarget.to(device)
+                    output = model(xdata)
+
+                    loss = criterion(output, xtarget)
+                    test_loss += loss.item()
+                    steps_test += 1
+
+                    pbar.update(1)
+                    pbar.set_postfix_str("Test Loss: {:.5f}".format(test_loss / steps_test))
+
+                    probs = nn.Softmax(dim=1)(output)
+                    pred_labels_test = list(torch.max(probs, 1)[1].detach().cpu().numpy())
+                    real_labels_test = list(xtarget.cpu().numpy())
+
+                    pred_logits_test += pred_labels_test
+                    real_logits_test += real_labels_test
+
+                test_metrics = metrics_func(list_of_metrics, list_of_agg, real_logits_test, pred_logits_test)
+                xstrres = "Epoch {}: ".format(epoch)
+                for met, dat in test_metrics.items():
+                    xstrres = xstrres + ' Test ' + met + ' {:.5f}'.format(dat)
+
+                xstrres = xstrres + " - "
+                print(xstrres)
 
 
 if __name__ == '__main__':
     list_of_metrics = ['acc', 'hlm']
-    list_of_agg = ['avg']
+    list_of_agg = ['dif']
     train(n_epoch, list_of_metrics, list_of_agg, PRETRAINED=False)
