@@ -4,7 +4,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 # from UCF101_9_Load_Data import read_data
 from torch.utils.data import DataLoader
 from torch.autograd import Variable
-
+from tqdm import tqdm
 from dataset import VideoDataset
 
 ## gridsearch: scraed, Talas, Tensorboard, wand
@@ -176,14 +176,22 @@ model, optimizer, criterion, scheduler = model_definition(PRETRAINED)
 print(model)
 # Fit data to model
 train_loader = DataLoader(VideoDataset(dataset='ucf101', split='train',clip_len=16), batch_size=20, shuffle=True, num_workers=1)
+
 for epoch in range(n_epoch):
-    for xdata, xtarget in train_loader:
-        xdata = Variable(xdata, requires_grad=True).to(device)
-        xtarget = Variable(xtarget).to(device)
-        # xdata, xtarget = xdata.to(device), xtarget.to(device)
-        optimizer.zero_grad()
-        output = model(xdata)
-        loss = criterion(output, xtarget)
-        loss.backward()
-        optimizer.step()
-        print(loss)
+    train_loss, steps_train = 0, 0
+    with tqdm(total=len(train_loader), desc="Epoch {}".format(epoch)) as pbar:
+        for xdata, xtarget in train_loader:
+            xdata = Variable(xdata, requires_grad=True).to(device)
+            xtarget = Variable(xtarget).to(device)
+            # xdata, xtarget = xdata.to(device), xtarget.to(device)
+            optimizer.zero_grad()
+            output = model(xdata)
+            loss = criterion(output, xtarget)
+            loss.backward()
+            optimizer.step()
+            train_loss += loss.item()
+            steps_train += 1
+            # print(loss)
+            pbar.update(1)
+            pbar.set_postfix_str("Test Loss: {:.5f}".format(train_loss / steps_train))
+
