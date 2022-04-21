@@ -6,6 +6,7 @@ from torch.utils.data import DataLoader
 from torch.autograd import Variable
 from tqdm import tqdm
 from dataset import VideoDataset
+from sklearn.metrics import accuracy_score, f1_score, hamming_loss, cohen_kappa_score, matthews_corrcoef
 
 ## gridsearch: scraed, Talas, Tensorboard, wand
 
@@ -58,7 +59,9 @@ class CNN(nn.Module):
         self.linear1 = nn.Linear(5120, 1280)
         self.linear2 = nn.Linear(1280, 640)
         self.linear3 = nn.Linear(640, 9)
+        self.softmax = nn.Softmax(dim=1)
         self.act = torch.relu
+
 
 
     def forward(self, x):  # x shape = (20, 3, 16, 112, 112)
@@ -72,7 +75,88 @@ class CNN(nn.Module):
         x = self.drop3(self.pool3(self.convnorm3(x)))
         # x = self.act(self.conv4b(self.act(self.conv4(x))))
         # x = self.drop4(self.pool4(self.convnorm4(x)))
-        return self.linear3(self.linear2(self.linear1(self.global_avg_pool(x).view(-1, 5120))))
+        x = self.linear3(self.linear2(self.linear1(self.global_avg_pool(x).view(-1, 5120))))
+        # x = self.softmax()
+        return x
+
+
+
+def metrics_func(metrics, aggregates, y_true, y_pred):
+    '''
+    multiple functiosn of metrics to call each function
+    f1, cohen, accuracy, mattews correlation
+    list of metrics: f1_micro, f1_macro, f1_avg, coh, acc, mat
+    list of aggregates : avg, sum
+    :return:
+    '''
+
+    def f1_score_metric(y_true, y_pred, type):
+        '''
+            type = micro,macro,weighted,samples
+        :param y_true:
+        :param y_pred:
+        :param average:
+        :return: res
+        '''
+        res = f1_score(y_true, y_pred, average=type)
+        return res
+
+    def cohen_kappa_metric(y_true, y_pred):
+        res = cohen_kappa_score(y_true, y_pred)
+        return res
+
+    def accuracy_metric(y_true, y_pred):
+        res = accuracy_score(y_true, y_pred)
+        return res
+
+    def matthews_metric(y_true, y_pred):
+        res = matthews_corrcoef(y_true, y_pred)
+        return res
+
+    def hamming_metric(y_true, y_pred):
+        res = hamming_loss(y_true, y_pred)
+        return res
+
+    xcont = 1
+    xsum = 0
+    xavg = 0
+    res_dict = {}
+    for xm in metrics:
+        if xm == 'f1_micro':
+            # f1 score average = micro
+            xmet = f1_score_metric(y_true, y_pred, 'micro')
+        elif xm == 'f1_macro':
+            # f1 score average = macro
+            xmet = f1_score_metric(y_true, y_pred, 'macro')
+        elif xm == 'f1_weighted':
+            # f1 score average =
+            xmet = f1_score_metric(y_true, y_pred, 'weighted')
+        elif xm == 'coh':
+             # Cohen kappa
+            xmet = cohen_kappa_metric(y_true, y_pred)
+        elif xm == 'acc':
+            # Accuracy
+            xmet =accuracy_metric(y_true, y_pred)
+        elif xm == 'mat':
+            # Matthews
+            xmet =matthews_metric(y_true, y_pred)
+        elif xm == 'hlm':
+            xmet =hamming_metric(y_true, y_pred)
+        else:
+            xmet = 0
+
+        res_dict[xm] = xmet
+
+        xsum = xsum + xmet
+        xcont = xcont +1
+
+    if 'sum' in aggregates:
+        res_dict['sum'] = xsum
+    if 'avg' in aggregates and xcont > 0:
+        res_dict['avg'] = xsum/xcont
+    # Ask for arguments for each metric
+
+    return res_dict
 
 class C3D(nn.Module):
     """
@@ -171,27 +255,46 @@ def save_model(model):
 
     print(model, file=open('summary_{}.txt'.format(NICKNAME), "w"))
 
-# %% Compile the model
-model, optimizer, criterion, scheduler = model_definition(PRETRAINED)
-print(model)
-# Fit data to model
-train_loader = DataLoader(VideoDataset(dataset='ucf101', split='train',clip_len=16), batch_size=20, shuffle=True, num_workers=1)
+def train(n_epoch, list_of_metrics, list_of_agg, PRETRAINED=False):
+    # %% Compile the model
+    model, optimizer, criterion, scheduler = model_definition(PRETRAINED)
+    print(model)
+    # Fit data to model
+    train_loader = DataLoader(VideoDataset(dataset='ucf101', split='train',clip_len=16), batch_size=20, shuffle=True, num_workers=1)
 
-for epoch in range(n_epoch):
-    train_loss, steps_train = 0, 0
-    with tqdm(total=len(train_loader), desc="Epoch {}".format(epoch)) as pbar:
-        for xdata, xtarget in train_loader:
-            xdata = Variable(xdata, requires_grad=True).to(device)
-            xtarget = Variable(xtarget).to(device)
-            # xdata, xtarget = xdata.to(device), xtarget.to(device)
-            optimizer.zero_grad()
-            output = model(xdata)
-            loss = criterion(output, xtarget)
-            loss.backward()
-            optimizer.step()
-            train_loss += loss.item()
-            steps_train += 1
-            # print(loss)
-            pbar.update(1)
-            pbar.set_postfix_str("Test Loss: {:.5f}".format(train_loss / steps_train))
+    for epoch in range(n_epoch):
+        train_loss, steps_train = 0, 0
+        with tqdm(total=len(train_loader), desc="Epoch {}".format(epoch)) as pbar:
+            for xdata, xtarget in train_loader:
+                xdata = Variable(xdata, requires_grad=True).to(device)
+                xtarget = Variable(xtarget).to(device)
+                # xdata, xtarget = xdata.to(device), xtarget.to(device)
+                optimizer.zero_grad()
+                output = model(xdata)
 
+                loss = criterion(output, xtarget)
+                loss.backward()
+                optimizer.step()
+                train_loss += loss.item()
+                steps_train += 1
+                # print(loss)
+                pbar.update(1)
+                pbar.set_postfix_str("Train Loss: {:.5f}".format(train_loss / steps_train))
+        # pred_labels_per = output.detach().to(torch.device('cpu')).numpy()
+        probs = nn.Softmax(dim=1)(output)
+        pred_labels = torch.max(probs, 1)[1].detach().cpu().numpy()
+        real_labels = xtarget.cpu().numpy()
+        train_metrics = metrics_func(list_of_metrics, list_of_agg, real_labels, pred_labels)
+        xstrres = "Epoch {}: ".format(epoch)
+        for met, dat in train_metrics.items():
+            xstrres = xstrres +' Train '+met+ ' {:.5f}'.format(dat)
+
+        xstrres = xstrres + " - "
+        print(xstrres)
+
+
+
+if __name__ == '__main__':
+    list_of_metrics = ['acc', 'hlm']
+    list_of_agg = ['avg']
+    train(n_epoch, list_of_metrics, list_of_agg, PRETRAINED=False)
