@@ -7,13 +7,12 @@ from torch.autograd import Variable
 from tqdm import tqdm
 from sklearn.metrics import accuracy_score, f1_score, hamming_loss, cohen_kappa_score, matthews_corrcoef
 
+from mypath import NICKNAME
 from dataset import VideoDataset
-from Code.Model_Definition import VC3D
+from Model_Definition import VC3D, NUM_CLASS
 ## gridsearch: scraed, Talas, Tensorboard, wand
 
 # %% HyperParameters
-NICKNAME = 'Trial_9class'
-OUTPUTS_a = 9  # Subject to change, now we manually picked 9 classes to classify
 BATCH_SIZE = 20
 LR = 0.001
 n_epoch = 50
@@ -234,7 +233,7 @@ def model_definition(pretrained=False):
 
     if pretrained:
         model = PRETRAINED
-        model.fc = nn.Linear(model.fc.in_features, OUTPUTS_a)
+        model.fc = nn.Linear(model.fc.in_features, NUM_CLASS)
     else:
         model = VC3D()
         # model = C3D()

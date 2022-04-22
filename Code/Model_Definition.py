@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-
+NUM_CLASS = 9  # Subject to change, now we manually picked 9 classes to classify
 # %% Create the model
 class VC3D(nn.Module):
     def __init__(self):
@@ -37,7 +37,7 @@ class VC3D(nn.Module):
         self.global_avg_pool = nn.MaxPool3d((1, 1, 2))
         self.linear1 = nn.Linear(5120, 1280)
         self.linear2 = nn.Linear(1280, 640)
-        self.linear3 = nn.Linear(640, 9)
+        self.linear3 = nn.Linear(640, NUM_CLASS)
         self.softmax = nn.Softmax(dim=1)
         self.act = torch.relu
 
@@ -85,7 +85,7 @@ class C3D(nn.Module):
 
         self.fc6 = nn.Linear(8192, 4096)
         self.fc7 = nn.Linear(4096, 4096)
-        self.fc8 = nn.Linear(4096, 9)
+        self.fc8 = nn.Linear(4096, NUM_CLASS)
 
         self.dropout = nn.Dropout(p=0.5)
 

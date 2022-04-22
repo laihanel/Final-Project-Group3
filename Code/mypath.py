@@ -2,6 +2,7 @@ import os
 
 # %%------------------------------------------------------------------------------------------------------------------
 
+NICKNAME = 'Trial_9class'
 OR_PATH = os.getcwd()
 os.chdir("..")  # Change to the parent directory
 PATH = os.getcwd()
