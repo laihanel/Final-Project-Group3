@@ -16,9 +16,10 @@ NICKNAME = 'Trial_9class'
 OUTPUTS_a = 9  # Subject to change, now we manually picked 9 classes to classify
 BATCH_SIZE = 20
 LR = 0.001
-n_epoch = 10
+n_epoch = 50
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 PRETRAINED = False
+SAVE_MODEL = True
 # PRETRAINED = models.efficientnet_b4(pretrained=True)
 
 # %%
@@ -143,19 +144,19 @@ def metrics_func(metrics, aggregates, y_true, y_pred):
             # Matthews
             xmet = matthews_metric(y_true, y_pred)
         elif xm == 'hlm':
-            xmet = hamming_metric(y_true, y_pred)
+            xmet = -hamming_metric(y_true, y_pred)
         else:
             xmet = 0
 
         res_dict[xm] = xmet
 
-        xdif = xsum - xmet
-        xcont = xcont +1
+        xsum = xsum + xmet
+        xcont = xcont + 1
 
-    if 'dif' in aggregates:
-        res_dict['dif'] = xdif
-    # if 'avg' in aggregates and xcont > 0:
-    #     res_dict['avg'] = xsum/xcont
+    if 'sum' in aggregates:
+        res_dict['sum'] = xsum
+    if 'avg' in aggregates and xcont > 0:
+        res_dict['avg'] = xsum/xcont
     # Ask for arguments for each metric
 
     return res_dict
@@ -257,7 +258,8 @@ def save_model(model):
 
     print(model, file=open('summary_{}.txt'.format(NICKNAME), "w"))
 
-def train(n_epoch, list_of_metrics, list_of_agg, PRETRAINED=False):
+
+def train(n_epoch, list_of_metrics, list_of_agg, save_on, PRETRAINED=False):
     # %% Compile the model
     model, optimizer, criterion, scheduler = model_definition(PRETRAINED)
     print(model)
@@ -265,6 +267,7 @@ def train(n_epoch, list_of_metrics, list_of_agg, PRETRAINED=False):
     train_loader = DataLoader(VideoDataset(dataset='ucf101', split='train',clip_len=16), batch_size=BATCH_SIZE, shuffle=True, num_workers=1)
     test_loader = DataLoader(VideoDataset(dataset='ucf101', split='test',clip_len=16), batch_size=BATCH_SIZE, shuffle=True, num_workers=1)
 
+    met_test_best = 0
 
     for epoch in range(n_epoch):
         train_loss, steps_train = 0, 0
@@ -298,7 +301,7 @@ def train(n_epoch, list_of_metrics, list_of_agg, PRETRAINED=False):
         train_metrics = metrics_func(list_of_metrics, list_of_agg, real_logits_train, pred_logits_train)
         xstrres = "Epoch {}: ".format(epoch)
         for met, dat in train_metrics.items():
-            xstrres = xstrres +' Train '+met+ ' {:.5f}'.format(dat)
+            xstrres = xstrres +' Train '+ met + ' {:.5f}'.format(dat)
 
         xstrres = xstrres + " - "
         print(xstrres)
@@ -330,14 +333,22 @@ def train(n_epoch, list_of_metrics, list_of_agg, PRETRAINED=False):
 
                 test_metrics = metrics_func(list_of_metrics, list_of_agg, real_logits_test, pred_logits_test)
                 xstrres = "Epoch {}: ".format(epoch)
+
                 for met, dat in test_metrics.items():
                     xstrres = xstrres + ' Test ' + met + ' {:.5f}'.format(dat)
+                    if met == save_on:
+                        met_test = dat
 
                 xstrres = xstrres + " - "
                 print(xstrres)
 
+                if met_test > met_test_best and SAVE_MODEL:
+                    torch.save(model.state_dict(), "model_{}.pt".format(NICKNAME))
+                    print("The model has been saved!")
+                    met_test_best = met_test
+
 
 if __name__ == '__main__':
     list_of_metrics = ['acc', 'hlm']
-    list_of_agg = ['dif']
-    train(n_epoch, list_of_metrics, list_of_agg, PRETRAINED=False)
+    list_of_agg = ['sum', 'avg']
+    train(n_epoch, list_of_metrics, list_of_agg, save_on='sum', PRETRAINED=False)
