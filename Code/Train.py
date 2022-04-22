@@ -1,4 +1,3 @@
-import numpy as np
 import torch
 import torch.nn as nn
 from torch.optim.lr_scheduler import ReduceLROnPlateau
@@ -9,7 +8,7 @@ from tqdm import tqdm
 from sklearn.metrics import accuracy_score, f1_score, hamming_loss, cohen_kappa_score, matthews_corrcoef
 
 from dataset import VideoDataset
-from Model_Definition import VC3D
+from Code.Model_Definition import VC3D
 ## gridsearch: scraed, Talas, Tensorboard, wand
 
 # %% HyperParameters
