@@ -264,10 +264,10 @@ def train(n_epoch, list_of_metrics, list_of_agg, save_on, PRETRAINED=False):
     model, optimizer, criterion, scheduler = model_definition(PRETRAINED)
     print(model)
     # Fit data to model
-    train_loader = DataLoader(VideoDataset(dataset='ucf101', split='train',clip_len=16), batch_size=BATCH_SIZE, shuffle=True, num_workers=1)
-    test_loader = DataLoader(VideoDataset(dataset='ucf101', split='test',clip_len=16), batch_size=BATCH_SIZE, shuffle=True, num_workers=1)
+    train_loader = DataLoader(VideoDataset(dataset='ucf101', split='train',clip_len=16), batch_size=BATCH_SIZE, shuffle=True, num_workers=4)
+    test_loader = DataLoader(VideoDataset(dataset='ucf101', split='test',clip_len=16), batch_size=BATCH_SIZE, shuffle=True, num_workers=4)
 
-    met_test_best = 0
+    met_test_best = -1
 
     for epoch in range(n_epoch):
         train_loss, steps_train = 0, 0
@@ -331,21 +331,21 @@ def train(n_epoch, list_of_metrics, list_of_agg, save_on, PRETRAINED=False):
                     pred_logits_test += pred_labels_test
                     real_logits_test += real_labels_test
 
-                test_metrics = metrics_func(list_of_metrics, list_of_agg, real_logits_test, pred_logits_test)
-                xstrres = "Epoch {}: ".format(epoch)
+        test_metrics = metrics_func(list_of_metrics, list_of_agg, real_logits_test, pred_logits_test)
+        xstrres = "Epoch {}: ".format(epoch)
 
-                for met, dat in test_metrics.items():
-                    xstrres = xstrres + ' Test ' + met + ' {:.5f}'.format(dat)
-                    if met == save_on:
-                        met_test = dat
+        for met, dat in test_metrics.items():
+            xstrres = xstrres + ' Test ' + met + ' {:.5f}'.format(dat)
+            if met == save_on:
+                met_test = dat
 
-                xstrres = xstrres + " - "
-                print(xstrres)
+        xstrres = xstrres + " - "
+        print(xstrres)
 
-                if met_test > met_test_best and SAVE_MODEL:
-                    torch.save(model.state_dict(), "model_{}.pt".format(NICKNAME))
-                    print("The model has been saved!")
-                    met_test_best = met_test
+        if met_test > met_test_best and SAVE_MODEL:
+            torch.save(model.state_dict(), "model_{}.pt".format(NICKNAME))
+            print("The model has been saved!")
+            met_test_best = met_test
 
 
 if __name__ == '__main__':
