@@ -268,6 +268,8 @@ def train(n_epoch, list_of_metrics, list_of_agg, save_on, PRETRAINED=False):
     test_loader = DataLoader(VideoDataset(dataset='ucf101', split='test',clip_len=16), batch_size=BATCH_SIZE, shuffle=True, num_workers=4)
 
     met_test_best = -1
+    trigger_times = 0
+    last_loss = 0
 
     for epoch in range(n_epoch):
         train_loss, steps_train = 0, 0
@@ -334,6 +336,8 @@ def train(n_epoch, list_of_metrics, list_of_agg, save_on, PRETRAINED=False):
         test_metrics = metrics_func(list_of_metrics, list_of_agg, real_logits_test, pred_logits_test)
         xstrres = "Epoch {}: ".format(epoch)
 
+        avg_test_loss = test_loss / steps_test
+
         for met, dat in test_metrics.items():
             xstrres = xstrres + ' Test ' + met + ' {:.5f}'.format(dat)
             if met == save_on:
@@ -346,6 +350,24 @@ def train(n_epoch, list_of_metrics, list_of_agg, save_on, PRETRAINED=False):
             torch.save(model.state_dict(), "model_{}.pt".format(NICKNAME))
             print("The model has been saved!")
             met_test_best = met_test
+
+        # early stopping
+        if avg_test_loss > last_loss:
+        # if avg_test_loss < 0.35:
+        #     break
+            trigger_times += 1
+            print('Trigger Times:', trigger_times)
+            if trigger_times >= 5:
+                print('Early stopping!\nStart to test process.')
+                break
+        else:
+            print('Trigger Times: 0')
+            trigger_times = 0
+        last_loss = avg_test_loss
+        # https://pythonguides.com/pytorch-early-stopping/
+
+        # learning rate scheduler
+        scheduler.step(met_test_best)
 
 
 if __name__ == '__main__':
