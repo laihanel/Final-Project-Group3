@@ -242,6 +242,7 @@ def model_definition(pretrained=False):
 
     optimizer = torch.optim.Adam(model.parameters(), lr=LR)
     criterion = nn.CrossEntropyLoss()
+    # criterion = nn.NLLLoss()
 
     scheduler = ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=3, verbose=True)
 
@@ -283,9 +284,9 @@ def train(n_epoch, list_of_metrics, list_of_agg, save_on, PRETRAINED=False):
                 xtarget = Variable(xtarget).to(device)
                 # xdata, xtarget = xdata.to(device), xtarget.to(device)
                 optimizer.zero_grad()
-                output = model(xdata)
+                output = model(xdata)  # does not contain softmax layer
 
-                loss = criterion(output, xtarget)
+                loss = criterion(output, xtarget)  # crossentropy loss has softmax layer
                 loss.backward()
                 optimizer.step()
                 train_loss += loss.item()
@@ -294,7 +295,7 @@ def train(n_epoch, list_of_metrics, list_of_agg, save_on, PRETRAINED=False):
                 pbar.update(1)
                 pbar.set_postfix_str("Train Loss: {:.5f}".format(train_loss / steps_train))
 
-                probs = nn.Softmax(dim=1)(output)
+                probs = nn.Softmax(dim=1)(output)  # add a softmax layer for output model
                 pred_labels_train = list(torch.max(probs, 1)[1].detach().cpu().numpy())
                 real_labels_train = list(xtarget.cpu().numpy())
 
@@ -327,7 +328,7 @@ def train(n_epoch, list_of_metrics, list_of_agg, save_on, PRETRAINED=False):
                     pbar.update(1)
                     pbar.set_postfix_str("Test Loss: {:.5f}".format(test_loss / steps_test))
 
-                    probs = nn.Softmax(dim=1)(output)
+                    probs = nn.Softmax(dim=1)(output)  # add the softmax layer for output model
                     pred_labels_test = list(torch.max(probs, 1)[1].detach().cpu().numpy())
                     real_labels_test = list(xtarget.cpu().numpy())
 

@@ -1,4 +1,7 @@
+import os
+
 import numpy as np
+import pandas as pd
 import torch
 import torch.nn as nn
 from torch.optim.lr_scheduler import ReduceLROnPlateau
@@ -8,6 +11,23 @@ from torch.autograd import Variable
 from tqdm import tqdm
 from dataset import VideoDataset
 from sklearn.metrics import accuracy_score, f1_score, hamming_loss, cohen_kappa_score, matthews_corrcoef
+import argparse
+import shutil
+from mypath import DATA_DIR, PROCESS_DIR, MODEL_DIR, PATH, NICKNAME
+from Model_Definition import VC3D, NUM_CLASS
+
+
+TEST_DIR = PROCESS_DIR + os.path.sep + 'test'
+OUT_DIR = PATH + os.path.sep + 'Result'
+
+def check_folder_exist(folder_name):
+    if os.path.exists(folder_name):
+        shutil.rmtree(folder_name)
+        os.makedirs(folder_name)
+    else:
+        os.makedirs(folder_name)
+
+check_folder_exist(OUT_DIR)
 
 # %% HyperParameters
 NICKNAME = 'Trial_9class'
@@ -19,64 +39,6 @@ device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 PRETRAINED = False
 SAVE_MODEL = True
 # PRETRAINED = models.efficientnet_b4(pretrained=True)
-
-
-# %% Create the model
-class CNN(nn.Module):
-    def __init__(self):
-        super(CNN, self).__init__()
-        self.conv1 = nn.Conv3d(3, 64, kernel_size=(3, 3, 3), padding=(1, 1, 1))
-        self.convnorm1 = nn.BatchNorm3d(64)
-        self.pool1 = nn.MaxPool3d(kernel_size=(2, 2, 2), stride=(2, 2, 2))
-        self.drop1 = nn.Dropout(0.5)
-
-        self.conv1b = nn.Conv3d(64, 128, kernel_size=(3, 3, 3), padding=(1, 1, 1))
-        self.convnorm1b = nn.BatchNorm3d(128)
-        self.pool1b = nn.MaxPool3d(kernel_size=(2, 2, 2), stride=(2, 2, 2))
-        self.drop1 = nn.Dropout(0.5)
-
-        self.conv2 = nn.Conv3d(128, 256, kernel_size=(3, 3, 3), padding=(1, 1, 1))
-        self.conv2b = nn.Conv3d(256, 256, kernel_size=(3, 3, 3), padding=(1, 1, 1))
-        self.pool2 = nn.MaxPool3d(kernel_size=(2, 2, 2), stride=(2, 2, 2))
-        self.convnorm2 = nn.BatchNorm3d(256)
-        self.drop2 = nn.Dropout(0.5)
-
-        self.conv3 = nn.Conv3d(256, 512, kernel_size=(3, 3, 3), padding=(1, 1, 1))
-        self.conv3b = nn.Conv3d(512, 512, kernel_size=(3, 3, 3), padding=(1, 1, 1))
-        self.pool3 = nn.MaxPool3d(kernel_size=(2, 3, 3), stride=(2, 3, 3))
-        self.convnorm3 = nn.BatchNorm3d(512)
-        self.drop3 = nn.Dropout(0.5)
-
-        # self.conv4 = nn.Conv3d(512, 1024, kernel_size=(3, 3, 3), padding=(1, 1, 1))
-        # self.conv4b = nn.Conv3d(1024, 1024, kernel_size=(3, 3, 3), padding=(1, 1, 1))
-        # self.pool4 = nn.MaxPool3d(kernel_size=(2, 2, 2), stride=(2, 2, 2))
-        # self.convnorm4 = nn.BatchNorm3d(1024)
-        # self.drop4 = nn.Dropout(0.5)
-
-
-        self.global_avg_pool = nn.MaxPool3d((1, 1, 2))
-        self.linear1 = nn.Linear(5120, 1280)
-        self.linear2 = nn.Linear(1280, 640)
-        self.linear3 = nn.Linear(640, 9)
-        self.softmax = nn.Softmax(dim=1)
-        self.act = torch.relu
-
-
-
-    def forward(self, x):  # x shape = (20, 3, 16, 112, 112)
-        x = self.act(self.conv1(x))
-        x = self.pool1(self.convnorm1(x))
-        x = self.act(self.conv1b(x))
-        x = self.pool1b(self.convnorm1b(x))
-        x = self.act(self.conv2b(self.act(self.conv2(x))))
-        x = self.drop2(self.pool2(self.convnorm2(x)))   # if kernal size of padding is 3, (20, 256, 1, 13, 13)
-        x = self.act(self.conv3b(self.act(self.conv3(x))))
-        x = self.drop3(self.pool3(self.convnorm3(x)))
-        # x = self.act(self.conv4b(self.act(self.conv4(x))))
-        # x = self.drop4(self.pool4(self.convnorm4(x)))
-        x = self.linear3(self.linear2(self.linear1(self.global_avg_pool(x).view(-1, 5120))))
-        # x = self.softmax()
-        return x
 
 
 def metrics_func(metrics, aggregates, y_true, y_pred):
@@ -156,5 +118,96 @@ def metrics_func(metrics, aggregates, y_true, y_pred):
 
     return res_dict
 
+def model_definition(pretrained=False):
+    '''
+        Define a Keras sequential model
+        Compile the model
+    '''
 
-def read_video()
+    model = VC3D()
+    # model = C3D()
+
+    model = model.to(device)
+
+    criterion = nn.CrossEntropyLoss()
+
+    return model, criterion
+
+def test(list_of_metrics, list_of_agg, OUT_DIR, pretrained = False):
+    # Create the test instructions to
+    # Load the model
+    # Create the loop to validate the data
+
+    # create a excel file to save the result
+    forldernames = os.listdir(TEST_DIR)
+    filename = []
+    for foldername in forldernames:
+        filepath = os.path.join(TEST_DIR, foldername)
+        filename += os.listdir(filepath)
+    xdf_dset_test = pd.DataFrame(filename, columns =['filenames'])
+
+
+    test_loader = DataLoader(VideoDataset(dataset='ucf101', split='test', clip_len=16),
+                              batch_size=BATCH_SIZE, shuffle=False, num_workers=4)
+
+    model, criterion  = model_definition(pretrained)
+    model.load_state_dict(torch.load('model_{}.pt'.format(NICKNAME), map_location=device))
+
+    model.eval()
+    test_loss, steps_test = 0, 0
+    pred_logits_test, real_logits_test = [], []
+    #  Create the evalution
+    #  Run the statistics
+    #  Save the results in the Excel file
+    # Remember to wirte a string con the result (NO A COLUMN FOR each )
+    with torch.no_grad():
+        for xdata, xtarget in test_loader:
+            xdata, xtarget = xdata.to(device), xtarget.to(device)
+            output = model(xdata)
+
+            loss = criterion(output, xtarget)
+            test_loss += loss.item()
+            steps_test += 1
+
+            probs = nn.Softmax(dim=1)(output)
+            pred_labels_test = list(torch.max(probs, 1)[1].detach().cpu().numpy())
+            real_labels_test = list(xtarget.cpu().numpy())
+
+            pred_logits_test += pred_labels_test
+            real_logits_test += real_labels_test
+            print("Test Loss: {:.5f}".format(test_loss / steps_test))
+
+    test_metrics = metrics_func(list_of_metrics, list_of_agg, real_logits_test, pred_logits_test)
+
+    avg_test_loss = test_loss / steps_test
+    xstrres = ''
+    for met, dat in test_metrics.items():
+        xstrres = xstrres + ' Test ' + met + ' {:.5f}'.format(dat)
+    xstrres = xstrres + " - "
+    print(xstrres)
+
+    ## The following code creates a string to be saved as 1,2,3,3,
+    ## This code will be used to validate the model
+    class_names = open(os.path.join(DATA_DIR, 'ucf_labels.txt'), "r")
+    content_list = class_names.readlines()
+    content = [x[2:-1] for x in content_list]
+    print('Saving result!')
+
+    real_labels = [content[i] for i in real_logits_test]
+    pred_labels = [content[i] for i in pred_logits_test]
+
+    xdf_dset_test['labels'] = real_labels
+    xdf_dset_test['results'] = pred_labels
+    xdf_dset_test.to_csv(os.path.join(OUT_DIR, 'results.csv'), index=False)
+    if os.path.exists(os.path.join(OUT_DIR, 'results.csv')):
+        print('Result Saved!')
+    else:
+        print('Error! No Path Found!')
+
+
+if __name__ == '__main__':
+    list_of_metrics = ['acc', 'hlm']
+    list_of_agg = ['sum', 'avg']
+
+
+    test(list_of_metrics, list_of_agg, OUT_DIR)
