@@ -7,9 +7,11 @@ import shutil
 from matplotlib import pyplot as plt
 
 from Model_Definition import VC3D
-from mypath import NICKNAME, DATA_DIR
+from mypath import NICKNAME, DATA_DIR, PATH
 
 #  TODO: Now can display images with plt.show(), need to solve display on cloud instance
+OUT_DIR = PATH + os.path.sep + 'Result'
+
 # %%
 def check_folder_exist(folder_name):
     if os.path.exists(folder_name):
@@ -44,9 +46,20 @@ def main():
     video = DATA_DIR + os.path.sep + 'PlayingViolin' + os.path.sep + 'v_PlayingViolin_g09_c02.avi'
     cap = cv2.VideoCapture(video)
     retaining = True
-
+    fps = int(cap.get(5))
+    size = (int(cap.get(3)),
+            int(cap.get(4)))
+    fourcc = int(cap.get(6))
+    frames_num = cap.get(7)
+    print('Video Readed, with fps %s, size %s and format %s' % (fps, size,
+                                                                chr(fourcc & 0xFF) + chr((fourcc >> 8) & 0xFF) + chr(
+                                                                    (fourcc >> 16) & 0xFF) + chr(
+                                                                    (fourcc >> 24) & 0xFF)))
+    out = cv2.VideoWriter(os.path.join(OUT_DIR, 'v_PlayingViolin_g09_c02_result.avi'), 1983148141, fps, size)
     clip = []
+    count = 0
     while retaining:
+        count += 1
         retaining, frame = cap.read()
         if not retaining and frame is None:
             continue
@@ -71,14 +84,21 @@ def main():
             cv2.putText(frame, "prob: %.4f" % probs[0][label], (20, 40),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6,
                         (0, 0, 255), 1)
+            out.write(frame)
             clip.pop(0)
+            if count % 10 == 0:
+                print(str(count / frames_num * 100) + '%')
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
 
         # cv2.imshow('result', frame)
         # cv2.waitKey(30)
-        plt.imshow(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-        plt.title('result')
-        plt.show()
+        # plt.imshow(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+        # plt.title('result')
+        # plt.show()
 
+
+    out.release()
     cap.release()
     cv2.destroyAllWindows()
 
