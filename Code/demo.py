@@ -1,13 +1,15 @@
 import torch
+import torch.nn as nn
 import numpy as np
 import cv2
 import os
 import shutil
+from matplotlib import pyplot as plt
 
 from Model_Definition import VC3D
 from mypath import NICKNAME, DATA_DIR
 
-#  TODO: Solve display issue on cloud instance. Perhaps save the frames as images?
+#  TODO: Now can display images with plt.show(), need to solve display on cloud instance
 # %%
 def check_folder_exist(folder_name):
     if os.path.exists(folder_name):
@@ -19,7 +21,7 @@ def check_folder_exist(folder_name):
 
 # %%
 def center_crop(frame):
-    frame = frame[8:120, 30:142, :]
+    frame = frame[:120, 22:142, :]
     return np.array(frame).astype(np.uint8)
 
 
@@ -28,7 +30,7 @@ def main():
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print("Device being used:", device)
 
-    with open('ucf_labels.txt', 'r') as f:
+    with open('ucf_9_labels.txt', 'r') as f:
         class_names = f.readlines()
         f.close()
     # init model
@@ -39,7 +41,7 @@ def main():
     model.eval()
 
     # read video
-    video = DATA_DIR + os.path.sep + 'PlayingPiano' + os.path.sep + 'v_PlayingPiano_g09_c03.avi'
+    video = DATA_DIR + os.path.sep + 'PlayingViolin' + os.path.sep + 'v_PlayingViolin_g09_c02.avi'
     cap = cv2.VideoCapture(video)
     retaining = True
 
@@ -60,7 +62,7 @@ def main():
             with torch.no_grad():
                 outputs = model.forward(inputs)
 
-            probs = torch.nn.Softmax(dim=1)(outputs)
+            probs = nn.Softmax(dim=1)(outputs)
             label = torch.max(probs, 1)[1].detach().cpu().numpy()[0]
 
             cv2.putText(frame, class_names[label].split(' ')[-1].strip(), (20, 20),
@@ -71,8 +73,11 @@ def main():
                         (0, 0, 255), 1)
             clip.pop(0)
 
-        cv2.imshow('result', frame)
-        cv2.waitKey(30)
+        # cv2.imshow('result', frame)
+        # cv2.waitKey(30)
+        plt.imshow(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+        plt.title('result')
+        plt.show()
 
     cap.release()
     cv2.destroyAllWindows()
