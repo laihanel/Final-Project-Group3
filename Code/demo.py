@@ -21,6 +21,9 @@ def check_folder_exist(folder_name):
         os.makedirs(folder_name)
 
 
+check_folder_exist(OUT_DIR)
+
+
 # %%
 def center_crop(frame):
     frame = frame[:120, 22:142, :]
