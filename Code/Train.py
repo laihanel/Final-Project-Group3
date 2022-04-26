@@ -16,7 +16,7 @@ from Model_Definition import VC3D, NUM_CLASS
 BATCH_SIZE = 20
 LR = 0.001
 n_epoch = 50
-device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 PRETRAINED = False
 SAVE_MODEL = True
 

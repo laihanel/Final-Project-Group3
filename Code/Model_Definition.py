@@ -9,12 +9,10 @@ class VC3D(nn.Module):
         self.conv1 = nn.Conv3d(3, 64, kernel_size=(3, 3, 3), padding=(1, 1, 1))
         self.convnorm1 = nn.BatchNorm3d(64)
         self.pool1 = nn.MaxPool3d(kernel_size=(2, 2, 2), stride=(2, 2, 2))
-        self.drop1 = nn.Dropout(0.5)
 
         self.conv1b = nn.Conv3d(64, 128, kernel_size=(3, 3, 3), padding=(1, 1, 1))
         self.convnorm1b = nn.BatchNorm3d(128)
         self.pool1b = nn.MaxPool3d(kernel_size=(2, 2, 2), stride=(2, 2, 2))
-        self.drop1 = nn.Dropout(0.5)
 
         self.conv2 = nn.Conv3d(128, 256, kernel_size=(3, 3, 3), padding=(1, 1, 1))
         self.conv2b = nn.Conv3d(256, 256, kernel_size=(3, 3, 3), padding=(1, 1, 1))
@@ -41,15 +39,15 @@ class VC3D(nn.Module):
         self.softmax = nn.Softmax(dim=1)
         self.act = torch.relu
 
-    def forward(self, x):  # x shape = (20, 3, 16, 112, 112)
+    def forward(self, x):  # x shape = (20, 3, 16, 120, 120)
         x = self.act(self.conv1(x))
         x = self.pool1(self.convnorm1(x))
         x = self.act(self.conv1b(x))
         x = self.pool1b(self.convnorm1b(x))
         x = self.act(self.conv2b(self.act(self.conv2(x))))
-        x = self.drop2(self.pool2(self.convnorm2(x)))   # if kernal size of padding is 3, (20, 256, 1, 13, 13)
+        x = self.drop2(self.pool2(self.convnorm2(x)))
         x = self.act(self.conv3b(self.act(self.conv3(x))))
-        x = self.drop3(self.pool3(self.convnorm3(x)))
+        x = self.drop3(self.pool3(self.convnorm3(x)))  # x.shape = (20, 512, 1, 5, 5)
         # x = self.act(self.conv4b(self.act(self.conv4(x))))
         # x = self.drop4(self.pool4(self.convnorm4(x)))
         x = self.linear3(self.linear2(self.linear1(self.global_avg_pool(x).view(-1, 5120))))
