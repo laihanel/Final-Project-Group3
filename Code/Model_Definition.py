@@ -32,7 +32,7 @@ class VC3D(nn.Module):
         # self.convnorm4 = nn.BatchNorm3d(1024)
         # self.drop4 = nn.Dropout(0.5)
 
-        self.global_avg_pool = nn.MaxPool3d((1, 1, 2))
+        self.global_max_pool = nn.MaxPool3d((1, 1, 2))
         self.linear1 = nn.Linear(5120, 1280)
         self.linear2 = nn.Linear(1280, 640)
         self.linear3 = nn.Linear(640, NUM_CLASS)
@@ -50,7 +50,8 @@ class VC3D(nn.Module):
         x = self.drop3(self.pool3(self.convnorm3(x)))  # x.shape = (20, 512, 1, 5, 5)
         # x = self.act(self.conv4b(self.act(self.conv4(x))))
         # x = self.drop4(self.pool4(self.convnorm4(x)))
-        x = self.linear3(self.linear2(self.linear1(self.global_avg_pool(x).view(-1, 5120))))
+        x = self.global_max_pool(x)  # After pooling x.shape = (20, 512, 1, 5, 2)
+        x = self.linear3(self.linear2(self.linear1(x.view(-1, 5120))))
         # x = self.softmax()
         return x
 

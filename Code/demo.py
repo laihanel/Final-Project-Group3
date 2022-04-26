@@ -11,6 +11,7 @@ from mypath import NICKNAME, DATA_DIR, PATH
 
 #  TODO: Now can display images with plt.show(), need to solve display on cloud instance
 OUT_DIR = PATH + os.path.sep + 'Result'
+DEMO_DIR = PATH + os.path.sep + 'Demo'
 
 # %%
 def check_folder_exist(folder_name):
@@ -22,7 +23,6 @@ def check_folder_exist(folder_name):
 
 
 check_folder_exist(OUT_DIR)
-
 
 # %%
 def center_crop(frame):
@@ -46,7 +46,9 @@ def main():
     model.eval()
 
     # read video
-    video = DATA_DIR + os.path.sep + 'PlayingViolin' + os.path.sep + 'v_PlayingViolin_g09_c02.avi'
+    video_name = 'PlayingGuitar'
+    video = DATA_DIR + os.path.sep + video_name + os.path.sep + 'v_' + video_name + '_g09_c04.avi'
+    # video = DEMO_DIR + os.path.sep + video_name + '.mp4'
     cap = cv2.VideoCapture(video)
     retaining = True
     fps = int(cap.get(5))
@@ -58,7 +60,7 @@ def main():
                                                                 chr(fourcc & 0xFF) + chr((fourcc >> 8) & 0xFF) + chr(
                                                                     (fourcc >> 16) & 0xFF) + chr(
                                                                     (fourcc >> 24) & 0xFF)))
-    out = cv2.VideoWriter(os.path.join(OUT_DIR, 'v_PlayingViolin_g09_c02_result.avi'), 1983148141, fps, size)
+    out = cv2.VideoWriter(os.path.join(OUT_DIR, video_name + '_result.mp4'), 1983148141, fps, size)
     clip = []
     count = 0
     while retaining:
