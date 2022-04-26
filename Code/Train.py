@@ -117,7 +117,7 @@ def model_definition(pretrained=False):
     criterion = nn.CrossEntropyLoss()
     # criterion = nn.NLLLoss()
 
-    scheduler = ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=3, verbose=True)
+    scheduler = ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=4, verbose=True)
 
     save_model(model)
 

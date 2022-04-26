@@ -140,6 +140,7 @@ def test(list_of_metrics, list_of_agg, OUT_DIR, pretrained = False):
 
     # create a excel file to save the result
     forldernames = os.listdir(TEST_DIR)
+    forldernames.sort()
     filename = []
     for foldername in forldernames:
         filepath = os.path.join(TEST_DIR, foldername)
