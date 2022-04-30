@@ -11,11 +11,11 @@ Since we want to customize the network ourselves, PyTorch is the best option for
 
 ## NETWORK
 The network we used is based on CNN3D. The 3D convolution kernel is more efficient for spatiotemporal feature learning. Tran et. (2015) proposes a network called C3D, and we will customize it with different kernel size or neural size to learn this architecture more clearly.
-![image info](./images/vc3d.png)
+![Architecture of VC3D Network](image/vc3d.png)
 
 ## RESULT
 In this project, we implemented a modified version of the C3D network, VC3D to better deal with the video classification task. While it achieved 100% accuracy in the Playing Instruments group for a random heldout test set that consisted of 15% of the full data, robustness issues were exposed when inference on videos collected from external sources.
-![image info](./images/output.png)
+![Results](image/output.png)
 
 ## Reference
 Tran, D., Bourdev, L., Fergus, R., Torresani, L., & Paluri, M. (2015). Learning spatiotemporal features with 3d convolutional networks. In Proceedings of the IEEE international conference on computer vision (pp. 4489-4497).
