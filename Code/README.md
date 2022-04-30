@@ -10,3 +10,9 @@
 * Eval_CNN3D.py: data evaluation.
 * demo.py: making the video demo.
 * UCF101_9_Load_Data.py: original dataloader, not used due to the error inside the pytorch.
+
+# Run Order
+* change path in the mypath.py
+* run Train.py for training
+* run Eval_CNN3D.py for evaluation
+* change the path and run demo.py for making the video demo
